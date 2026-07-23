@@ -71,9 +71,17 @@ class _ScanScreenState extends ConsumerState<ScanScreen>
     // start()/stop() imperativos ao detectar um QR. Isso desliga o
     // `useAppLifecycleState` automático do MobileScanner — por isso
     // observamos o ciclo de vida nós mesmos, abaixo.
+    //
+    // `autoStart: false` é obrigatório aqui: por padrão o WIDGET
+    // `MobileScanner` já chama `controller.start()` sozinho assim que
+    // monta (mobile_scanner.dart:208-209). Sem desligar isso, essa
+    // chamada automática corria com a nossa logo abaixo e uma das duas
+    // lançava `MobileScannerException(controllerInitializing)` — achado
+    // em aparelho real, não hipotético.
     _controller = MobileScannerController(
       formats: const [BarcodeFormat.qrCode],
       detectionSpeed: DetectionSpeed.noDuplicates,
+      autoStart: false,
     );
     unawaited(_controller.start());
   }

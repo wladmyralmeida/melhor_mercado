@@ -1,11 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:melhor_mercado/features/scan/domain/receipt_ocr_parser.dart';
 
-// Os textos abaixo seguem os padrões de layout DE DANFE NFC-e
-// documentados (código/descrição/qtde/un/vl.unit/vl.total, decimal por
-// vírgula) — NÃO são transcrição de um cupom real. A acurácia real
-// contra fotos verdadeiras de cupons da Paraíba ainda não foi medida;
-// isso é o que os testes abaixo NÃO provam.
+// A maioria dos textos abaixo segue os padrões de layout DE DANFE
+// NFC-e documentados (código/descrição/qtde/un/vl.unit/vl.total,
+// decimal por vírgula), mas são inventados à mão — não provam nada
+// sobre acurácia contra foto real. O último grupo ("cupom real") é
+// exceção: transcrito de uma foto de cupom de verdade (Varejão do
+// Preço, João Pessoa-PB) enviada pelo usuário, que revelou bugs reais
+// que nenhum teste inventado tinha pego. Ainda é UMA rede/PDV só —
+// outras redes podem imprimir diferente e continuam sem cobertura.
 void main() {
   group('linha completa (descrição + qty + unidade + preços)', () {
     test('qty inteira, unitário e total presentes, reconciliando', () {
@@ -148,6 +151,79 @@ void main() {
         'PAO FRANCES',
       ]);
       expect(items.map((i) => i.totalPriceCents), [899, 2490, 1500, 650]);
+    });
+  });
+
+  group('cupom real (foto enviada pelo usuário — Varejão do Preço, JP-PB)', () {
+    // Transcrito de uma foto real de cupom, não hipotético. Revelou dois
+    // bugs que os testes sintéticos acima não cobriam: (1) esta rede
+    // imprime "UNIDADE QUANTIDADE" em vez de "QUANTIDADE UNIDADE" (ex.
+    // "330ML UN 1 X 6,79", não "330ML 1 UN X 6,79"); (2) cada linha
+    // começa com número da linha + código de barras antes da descrição.
+    const raw =
+        'VAREJAO DO PRECO\n'
+        'CNPJ: 11.352.290/0003-10 SUPERMERCADO VAREJAO DO PRECO LTDA\n'
+        'R EUCLIDES FERREIRA DE CARVALHO, 31 JARDIM CIDADE UNIVERSITARIA\n'
+        'JOAO PESSOA-PB 58052-236\n'
+        'Fone:3206-0947 I.E.:16443404-6\n'
+        'Documento Auxiliar da Nota Fiscal do Consumidor Eletronica\n'
+        'EMITIDA EM CONTINGENCIA\n'
+        'Pendente de autorizacao\n'
+        '# Codigo Descricao Qtde Un. Valor unit. Valor total\n'
+        '001 7891991299619 MICHELOB ULTRA N LONG NECK 330ML UN 1 X 6,79 6,79\n'
+        '002 7898034920790 IOG ISIS FRUTAS VERMELHAS 900G UN 1 X 11,89 11,89\n'
+        '009 3000000000500 PAO FRANCES 12H KG 0,360 X 13,99 5,04\n'
+        '022 0000000000290 TOMATE KG 1,365 X 2,99 4,08\n';
+
+    test('nome vem limpo: sem número de linha, código de barras nem '
+        '"UN"/"X" soltos — o bug original que motivou este grupo', () {
+      final items = parseReceiptText(raw);
+
+      expect(items, hasLength(4));
+      expect(items.map((i) => i.name), [
+        'MICHELOB ULTRA N LONG NECK 330ML',
+        'IOG ISIS FRUTAS VERMELHAS 900G',
+        'PAO FRANCES 12H',
+        'TOMATE',
+      ]);
+    });
+
+    test('quantidade e preço por unidade batem certo mesmo com a unidade '
+        'impressa antes da quantidade', () {
+      final items = parseReceiptText(raw);
+
+      final michelob = items[0];
+      expect(michelob.quantity, 1);
+      expect(michelob.unit, 'UN');
+      expect(michelob.unitPriceCents, 679);
+      expect(michelob.totalPriceCents, 679);
+
+      final pao = items[2];
+      expect(pao.quantity, 0.360);
+      expect(pao.unit, 'KG');
+      expect(pao.unitPriceCents, 1399);
+      expect(pao.totalPriceCents, 504);
+
+      final tomate = items[3];
+      expect(tomate.quantity, 1.365);
+      expect(tomate.unitPriceCents, 299);
+      expect(tomate.totalPriceCents, 408);
+    });
+
+    test('cabeçalho da loja (nome/endereço/telefone) não vaza pro nome '
+        'do primeiro item — cortado pela linha de cabeçalho da tabela', () {
+      final items = parseReceiptText(raw);
+      expect(items.first.name, isNot(contains('VAREJAO')));
+      expect(items.first.name, isNot(contains('EUCLIDES')));
+    });
+
+    test('"KG" dentro do NOME (produto vendido por peso) não é confundido '
+        'com a unidade de verdade — regressão que a normalização causou '
+        'e foi corrigida', () {
+      final items = parseReceiptText('TOMATE SALADA KG 0,732 KG 6,99 5,12');
+      expect(items, hasLength(1));
+      expect(items.single.quantity, 0.732);
+      expect(items.single.name, 'TOMATE SALADA KG');
     });
   });
 }
