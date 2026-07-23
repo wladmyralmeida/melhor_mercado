@@ -1,0 +1,52 @@
+name: melhor_mercado
+description: "Lista de compras que aprende quanto você paga. Paraíba-first."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Estado — Riverpod 3 escrito à mão (sem codegen: evita a fratura analyzer 12/13)
+  flutter_riverpod: ^3.3.2
+
+  # Navegação
+  go_router: ^17.3.0
+
+  # Banco local (local-first: a lista funciona offline, sem conta)
+  drift: ^2.34.0
+  drift_flutter: ^0.3.1
+  path_provider: ^2.1.6
+
+  # Formatação pt-BR (moeda, datas)
+  intl: ^0.20.2
+
+  # Fase 2: leitura do QR do cupom fiscal
+  mobile_scanner: ^7.4.0
+  mm_fiscal:
+    path: packages/mm_fiscal
+
+  # Foto do cupom -> itens: OCR on-device (ML Kit), sem backend, sem
+  # conta, a foto nunca sai do aparelho.
+  google_mlkit_text_recognition: ^0.16.0
+  image_picker: ^1.2.3
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # Único codegen do projeto: Drift. Sem riverpod_generator/freezed => sem pins de analyzer.
+  drift_dev: ^2.34.0
+  build_runner: ^2.15.0
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

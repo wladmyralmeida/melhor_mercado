@@ -1,0 +1,14 @@
+name: mm_fiscal
+description: >
+  Parsing e validação de documentos fiscais brasileiros (NFC-e, NF-e,
+  CF-e-SAT) e GTIN. Dart puro, sem dependência de Flutter — reutilizável
+  no app e num futuro backend/CLI.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.12.0
+
+dev_dependencies:
+  test: ^1.26.3
+  lints: ^6.0.0

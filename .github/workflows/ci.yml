@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  flutter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Dependências
+        run: flutter pub get
+
+      - name: Codegen (Drift)
+        run: dart run build_runner build
+
+      - name: Codegen não deixou diff (arquivos .g.dart commitados)
+        run: git diff --exit-code
+
+      - name: Formatação
+        run: dart format --set-exit-if-changed .
+
+      - name: Análise estática
+        run: dart analyze --fatal-infos
+
+      - name: Testes
+        # --timeout 60s: um teste travado falha em 1 min, não em 10.
+        run: flutter test --timeout 60s
+
+      - name: Diagramas Mermaid dos docs são válidos
+        run: |
+          npm install --no-save mermaid@11 jsdom >/dev/null 2>&1
+          node scripts/validate-mermaid.mjs docs/00-fase-0-visao-arquitetural.md
+
+      - name: Build Android (debug)
+        run: flutter build apk --debug
